@@ -442,15 +442,15 @@ if __name__ == "__main__":
     URL = "https://www.bible.com/bible/107/GEN.1.NET"
     # URL = "https://www.bible.com/bible/107/PSA.119.NET"
 
-#
-    # print(f"Scraping {URL} ...\n")
-    # chapter = scrape(URL)
-    # print_structure(chapter, show_footnotes=True)
 
-    with open("output3.txt", "w", encoding="utf-8") as _f:
+    print(f"Scraping {URL} ...\n")
+    chapter = scrape(URL)
+    print_structure(chapter, show_footnotes=True)
+
+    with open("output.txt", "w", encoding="utf-8") as _f:
         sys.stdout = _f
         print(f"Scraping {URL} ...\n")
         chapter = scrape(URL)
         print_structure(chapter, show_footnotes=True)
         sys.stdout = sys.__stdout__
-    print("Done — output written to output3.txt")
+    print("Done — output written to output.txt")
