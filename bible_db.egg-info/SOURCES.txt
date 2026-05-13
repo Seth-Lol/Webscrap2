@@ -1,0 +1,11 @@
+setup.py
+Webscrap2/bible_db/__init__.py
+Webscrap2/bible_db/connection.py
+Webscrap2/bible_db/csv_to_mongo.py
+Webscrap2/bible_db/importer.py
+Webscrap2/bible_db/models.py
+Webscrap2/bible_db/repository.py
+Webscrap2/bible_db.egg-info/PKG-INFO
+Webscrap2/bible_db.egg-info/SOURCES.txt
+Webscrap2/bible_db.egg-info/dependency_links.txt
+Webscrap2/bible_db.egg-info/top_level.txt
