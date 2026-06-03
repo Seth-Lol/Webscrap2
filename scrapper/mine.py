@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import os
 from dataclasses import dataclass, field
 from typing import Literal
 import sys
@@ -227,9 +228,6 @@ def get_chapter_data(version: str, book_id: int, reference: str) -> dict:
     Returns:
         JSON response from the API
     """
-
-
-
     url = f"https://nodejs.bible.com/api/bible/chapter/{version}"
     params = {
         "id": book_id,
@@ -241,63 +239,125 @@ def get_chapter_data(version: str, book_id: int, reference: str) -> dict:
     return response.json()
 
 
+def get_all_books(bible_id: int) -> list:
+    """
+    Fetch all books available in a specific Bible translation.
+    
+    Args:
+        bible_id: The Bible ID (e.g., 107 for NET Bible)
+    
+    Returns:
+        List of books with their metadata
+    """
+    url = f"https://nodejs.bible.com/api/bible/{bible_id}/books"
+    
+    response = requests.get(url, headers=HEADERS)
+    response.raise_for_status()
+    return response.json()
 
+
+def get_book_chapters(bible_id: int, book_id: str) -> list:
+    """
+    Fetch all chapters available for a specific book.
+    
+    Args:
+        bible_id: The Bible ID (e.g., 107 for NET Bible)
+        book_id: The book ID (e.g., "GEN", "ROM")
+    
+    Returns:
+        List of chapters for the book
+    """
+    url = f"https://nodejs.bible.com/api/bible/{bible_id}/books/{book_id}/chapters"
+    
+    response = requests.get(url, headers=HEADERS)
+    response.raise_for_status()
+    return response.json()
+
+
+def reset_global_counters() -> None:
+    """Reset all global counters for a new chapter."""
+    global paragraphNumber, q1Number, q2Number, q3Number, mNumber, rows, id
+    paragraphNumber = 0
+    q1Number = 0
+    q2Number = 0
+    q3Number = 0
+    mNumber = 0
+    rows = [["id", "tag", "text"]]  # Reset rows with header
+    id = 0
+
+
+# Add this near the top of your file
+BIBLE_BOOKS = {
+    # Old Testament
+    "GEN": 50, "EXO": 40, "LEV": 27, "NUM": 36, "DEU": 34,
+    "JOS": 24, "JDG": 21, "RUT": 4,  "1SA": 31, "2SA": 24,
+    "1KI": 22, "2KI": 25, "1CH": 29, "2CH": 36, "EZR": 10,
+    "NEH": 13, "EST": 10, "JOB": 42, "PSA": 150,"PRO": 31,
+    "ECC": 12, "SNG": 8,  "ISA": 66, "JER": 52, "LAM": 5,
+    "EZK": 48, "DAN": 12, "HOS": 14, "JOL": 3,  "AMO": 9,
+    "OBA": 1,  "JON": 4,  "MIC": 7,  "NAM": 3,  "HAB": 3,
+    "ZEP": 3,  "HAG": 2,  "ZEC": 14, "MAL": 4,
+    # New Testament
+    "MAT": 28, "MRK": 16, "LUK": 24, "JHN": 21, "ACT": 28,
+    "ROM": 16, "1CO": 16, "2CO": 13, "GAL": 6,  "EPH": 6,
+    "PHP": 4,  "COL": 4,  "1TH": 5,  "2TH": 3,  "1TI": 6,
+    "2TI": 4,  "TIT": 3,  "PHM": 1,  "HEB": 13, "JAS": 5,
+    "1PE": 5,  "2PE": 3,  "1JN": 5,  "2JN": 1,  "3JN": 1,
+    "JUD": 1,  "REV": 22,
+}
 
 
 if __name__ == "__main__":
-    import sys
+    import os
+    from datetime import datetime
 
-   
-    bookChapter = "GEN.1"
-    # bookChapter = "GEN.3"
-    # bookChapter = "PSA.119"
-    # bookChapter = "PSA.77"
-    # bookChapter = "ROM.1"
-    # bookChapter = "ACT.20"
-    # bookChapter = "MRK.1"
+    bibleId = 107   # NET Bible
+    version = "3.3"
 
-    bibleId = 107 # NET Bible
-    # bibleId = 2287  #GKHB
-    # # bibleId = 1270  #KOV
-    # # bibleId = 1930 #  NVT
-    # bibleId = 1608 # ARA
+    print("Starting Bible scraping process...")
+    print(f"Bible ID: {bibleId}")
 
+    # Create output folder
+    timestamp  = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = os.path.join("data", f"net_bible_scrape_{timestamp}")
+    os.makedirs(output_dir, exist_ok=True)
+    print(f"Output folder: {output_dir}")
 
-    response = get_chapter_data("3.3", bibleId, bookChapter)
+    total = 0
 
-    chapterCode = response['reference']['usfm'][0]
-    title  = response['reference']['human']
-    book, chapter = chapterCode.split(".")
-    version_id = response['reference']['version_id']
-    copyright = response['copyright']['html']
-    soup = BeautifulSoup(copyright, "html.parser")
-    # This removes all tags and returns just the text
-    clean_text = soup.get_text()
-    copyrightText = response['copyright']['text']
-    
+    for book_code, total_chapters in BIBLE_BOOKS.items():
+        print(f"\nProcessing {book_code} ({total_chapters} chapters)...")
 
-    textHtml = BeautifulSoup(response['content'], 'lxml')
+        for chapter_num in range(1, total_chapters + 1):
+            try:
+                reset_global_counters()
 
-   
-    chapter_tag: Tag | None = textHtml.find(class_="chapter")
+                reference = f"{book_code}.{chapter_num}"
+                response  = get_chapter_data(version, bibleId, reference)
 
+                textHtml    = BeautifulSoup(response['content'], 'lxml')
+                chapter_tag = textHtml.find(class_="chapter")
 
-    if chapter_tag:
-        fileName = f"debug_{book}_{chapter}_{bibleId}.txt"
-        rows.append([id, bookChapter,version_id])
-        id+=1
-        with open(fileName, "w", encoding="utf-8") as _f:
-            sys.stdout = _f
-               
-            tags_data = extract_tags_from_chapter(chapter_tag)
-            write_rows_to_csv(fileName.replace(".txt", ".csv"))
+                if chapter_tag:
+                    csv_filename = os.path.join(
+                        output_dir,
+                        f"{book_code}_{chapter_num:03d}.csv"
+                    )
+                    extract_tags_from_chapter(chapter_tag)
+                    write_rows_to_csv(csv_filename)
+                    total += 1
+                    print(f"  ✓ {reference}")
+                else:
+                    print(f"  ✗ {reference} — chapter tag not found")
+
+            except Exception as e:
+                print(f"  ✗ {reference} — error: {e}")
+                continue
+
+        print(f"\n{'='*50}")
+        print(f"Done! {total} chapters saved to {output_dir}")
+        print(f"{'='*50}")
         
-    else:
-        print("Chapter tag not found")
-
-    # Restore stdout
-    sys.stdout = sys.__stdout__  
-                   
 
 # usfm tags_
 # \p	Normal paragraph	Indented
