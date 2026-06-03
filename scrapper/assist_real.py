@@ -24,6 +24,9 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
 }
 
+BASE_DIR = os.path.dirname(__file__)
+DATA_DIR = os.path.join(BASE_DIR, "data")
+
 def write_rows_to_csv(fileName: str) -> None:
 #    for id, tag, text in zip(ids, tags, texts):
 #     rows.append([id, tag, text])
@@ -58,6 +61,7 @@ def extract_tags_from_chapter(version_id: int, chapter_tag: Tag, rows: list, lin
     # handle NET PSALM 119:113 that has a label with the verse number different from the verse number in the verse tag, so I need to update the verse number in the classes to match the verse number in the label, and also update the entry value to match the verse number in the label
     chapter_exception, verse_exception = 0, 0
    
+    # BREAKPOINT: Main parser loop. Pause here to inspect each top-level HTML tag in the chapter.
     for tag in chapter_tag:
 
         if isinstance(tag, Tag):
@@ -103,6 +107,7 @@ def extract_tags_from_chapter(version_id: int, chapter_tag: Tag, rows: list, lin
                             entry.rowId = lineNumber
                             entry.keyParts = classes
                             strTemp = nephew.get_text(strip=True)
+                            # BREAKPOINT: Footnote branch. Pause here to learn how note text is detected and cleaned.
                             if {'note', 'f'}.issubset(classes):
 
                                 # match version_id:  
@@ -146,6 +151,7 @@ def extract_tags_from_chapter(version_id: int, chapter_tag: Tag, rows: list, lin
                                     lineNumber+=1
 
                             else: #verse
+                                # BREAKPOINT: New verse label. Pause here to see when the parser moves to a new verse.
                                 if {'verse', 'label'}.issubset(classes):
                                     lineNumber = append_verse_plain_text(entries, rows, lineNumber, verse_qtt)
                                     verse_qtt += 1
@@ -455,8 +461,8 @@ if __name__ == "__main__":
     import sys
     rows = [["id","tag","text"]]
     lineNumber = 0
-    ot = load_ot_books_from_json("./app/json")
-    nt = load_nt_books_from_json("./app/json")
+    ot = load_ot_books_from_json(DATA_DIR)
+    nt = load_nt_books_from_json(DATA_DIR)
     testament = "NT"  # "OT" or "NT"
     book_number = 0
 
@@ -489,6 +495,7 @@ if __name__ == "__main__":
     #         book_chapter = f"{book_id}.{chapter_num}"
     #         print(book_chapter)  # Outputs: GEN.1, GEN.2, ..., EXO.1, etc.
 
+    # BREAKPOINT: API fetch. Pause here to inspect bibleId, book_chapter, and the response from bible.com.
     response = get_chapter_data("3.3", bibleId, book_chapter)
 
     chapterCode = response['reference']['usfm'][0]
@@ -596,6 +603,7 @@ if __name__ == "__main__":
     
 
     textHtml = BeautifulSoup(response['content'], 'lxml')
+    # BREAKPOINT: Parsed HTML. Pause here to inspect textHtml and chapter_tag before parsing entries.
     chapter_tag: Tag | None = textHtml.find(class_="chapter")
 
     if chapter_tag:
@@ -618,6 +626,7 @@ if __name__ == "__main__":
         with open(fileName_txt, "w", encoding="utf-8") as _f:
             sys.stdout = _f
             
+            # BREAKPOINT: Enter the parser. Step into this function to watch HTML become Entry objects.
             entries = extract_tags_from_chapter(versionId, chapter_tag, rows, lineNumber)
             chapter.entries = entries
 
@@ -629,9 +638,9 @@ if __name__ == "__main__":
                 last_verse_number = int(number)
 
             testament = "OT"
-            result = get_book_from_json("./app/json/old.json", bookAbbreviation)
+            result = get_book_from_json(os.path.join(DATA_DIR, "old.json"), bookAbbreviation)
             if result is None:
-                result = get_book_from_json("./app/json/new.json", bookAbbreviation)
+                result = get_book_from_json(os.path.join(DATA_DIR, "new.json"), bookAbbreviation)
                 testament = "NT"
 
             index, book_name, book_data = result
