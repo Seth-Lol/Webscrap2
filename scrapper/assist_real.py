@@ -24,6 +24,8 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
 }
 
+# Always find old.json/new.json from this script's folder.
+# This works even if VS Code runs the script from a different working directory.
 BASE_DIR = os.path.dirname(__file__)
 DATA_DIR = os.path.join(BASE_DIR, "data")
 
@@ -434,7 +436,7 @@ def get_book_from_json(json_file_path: str, book_id: str) -> tuple[str, dict] | 
     Retrieve a book element from a JSON file by book_id.
     
     Args:
-        json_file_path: Path to the JSON file (e.g., "./app/json/old.json")
+        json_file_path: Path to the JSON file (e.g., "scrapper/data/old.json")
         book_id: The book ID to search for (e.g., "JDG", "GEN")
     
     Returns:

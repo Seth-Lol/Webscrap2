@@ -37,6 +37,44 @@ Webscrap2/
 
 ## How The Project Works
 
+## Project Diagram
+
+```text
+                         bible.com API
+                              |
+                              v
+                    scrapper/assist_real.py
+                              |
+          +-------------------+-------------------+
+          |                   |                   |
+          v                   v                   v
+      app/json/           app/csv/            app/txt/
+          |                   |
+          |                   v
+          |          script/csv_to_mongo.py
+          |                   |
+          v                   v
+  bible.translation     bible.chapters
+          |                   |
+          |                   v
+          |            bible_db/repository.py
+          |                   |
+          |                   v
+          |              api/main.py
+          |                   |
+          +-------------------+
+                              |
+                              v
+                       FastAPI endpoints
+                  /verse  /chapter  /search
+```
+
+Short version:
+
+```text
+Scrape -> Save files -> Import to MongoDB -> Read through API
+```
+
 ### 1. Scraping
 
 The scraper calls the bible.com chapter API:
