@@ -24,11 +24,6 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
 }
 
-# Always find old.json/new.json from this script's folder.
-# This works even if VS Code runs the script from a different working directory.
-BASE_DIR = os.path.dirname(__file__)
-DATA_DIR = os.path.join(BASE_DIR, "data")
-
 def write_rows_to_csv(fileName: str) -> None:
 #    for id, tag, text in zip(ids, tags, texts):
 #     rows.append([id, tag, text])
@@ -63,7 +58,6 @@ def extract_tags_from_chapter(version_id: int, chapter_tag: Tag, rows: list, lin
     # handle NET PSALM 119:113 that has a label with the verse number different from the verse number in the verse tag, so I need to update the verse number in the classes to match the verse number in the label, and also update the entry value to match the verse number in the label
     chapter_exception, verse_exception = 0, 0
    
-    # BREAKPOINT: Main parser loop. Pause here to inspect each top-level HTML tag in the chapter.
     for tag in chapter_tag:
 
         if isinstance(tag, Tag):
@@ -109,7 +103,6 @@ def extract_tags_from_chapter(version_id: int, chapter_tag: Tag, rows: list, lin
                             entry.rowId = lineNumber
                             entry.keyParts = classes
                             strTemp = nephew.get_text(strip=True)
-                            # BREAKPOINT: Footnote branch. Pause here to learn how note text is detected and cleaned.
                             if {'note', 'f'}.issubset(classes):
 
                                 # match version_id:  
@@ -153,7 +146,6 @@ def extract_tags_from_chapter(version_id: int, chapter_tag: Tag, rows: list, lin
                                     lineNumber+=1
 
                             else: #verse
-                                # BREAKPOINT: New verse label. Pause here to see when the parser moves to a new verse.
                                 if {'verse', 'label'}.issubset(classes):
                                     lineNumber = append_verse_plain_text(entries, rows, lineNumber, verse_qtt)
                                     verse_qtt += 1
@@ -436,7 +428,7 @@ def get_book_from_json(json_file_path: str, book_id: str) -> tuple[str, dict] | 
     Retrieve a book element from a JSON file by book_id.
     
     Args:
-        json_file_path: Path to the JSON file (e.g., "scrapper/data/old.json")
+        json_file_path: Path to the JSON file (e.g., "./app/json/old.json")
         book_id: The book ID to search for (e.g., "JDG", "GEN")
     
     Returns:
@@ -463,8 +455,10 @@ if __name__ == "__main__":
     import sys
     rows = [["id","tag","text"]]
     lineNumber = 0
-    ot = load_ot_books_from_json(DATA_DIR)
-    nt = load_nt_books_from_json(DATA_DIR)
+
+
+    ot = load_ot_books_from_json(".")
+    nt = load_nt_books_from_json(".")
     testament = "NT"  # "OT" or "NT"
     book_number = 0
 
@@ -482,11 +476,12 @@ if __name__ == "__main__":
 
     # bibleId = 107 # NET Bible
     # bibleId = 2287  #GKHB
-    # bibleId = 1270  #KOV
+    bibleId = 1270  #KOV
     # bibleId = 1930 #  NVT
     # bibleId = 59 #  ESV
     # bibleId = 1608 # ARA
-    bibleId = 1588 #AMP
+    # bibleId = 1588 # AMP
+
 
 
     # for book_name, book_data in ot.items():
@@ -497,7 +492,6 @@ if __name__ == "__main__":
     #         book_chapter = f"{book_id}.{chapter_num}"
     #         print(book_chapter)  # Outputs: GEN.1, GEN.2, ..., EXO.1, etc.
 
-    # BREAKPOINT: API fetch. Pause here to inspect bibleId, book_chapter, and the response from bible.com.
     response = get_chapter_data("3.3", bibleId, book_chapter)
 
     chapterCode = response['reference']['usfm'][0]
@@ -518,10 +512,6 @@ if __name__ == "__main__":
             translationAbbreviation = "NET"
             translationName = "New English Translation"
             language = "English"
-        case 1588: 
-            translationAbbreviation = "AMP"
-            translationName = "Amplified Bible"
-            language = "English"
         case 2287: 
             translationAbbreviation = "GKHB"
             translationName = "Global Khmer Bible"
@@ -538,6 +528,10 @@ if __name__ == "__main__":
             translationAbbreviation = "ARA"
             translationName = "Almeida Revista e Atualizada"
             language = "Portuguese"
+        case 1588: 
+            translationAbbreviation = "AMP"
+            translationName = "Amplified Bible"
+            language = "English"
 
     copyright = response['copyright']['html']
 
@@ -609,7 +603,6 @@ if __name__ == "__main__":
     
 
     textHtml = BeautifulSoup(response['content'], 'lxml')
-    # BREAKPOINT: Parsed HTML. Pause here to inspect textHtml and chapter_tag before parsing entries.
     chapter_tag: Tag | None = textHtml.find(class_="chapter")
 
     if chapter_tag:
@@ -632,21 +625,27 @@ if __name__ == "__main__":
         with open(fileName_txt, "w", encoding="utf-8") as _f:
             sys.stdout = _f
             
-            # BREAKPOINT: Enter the parser. Step into this function to watch HTML become Entry objects.
             entries = extract_tags_from_chapter(versionId, chapter_tag, rows, lineNumber)
             chapter.entries = entries
 
             # ==== verify if the last verse number in the entries matches the expected chapter length from the JSON files, and print a warning if it does not match, to identify potential issues with the scraped data, such as missing verses or incorrect verse numbers, which can be caused by changes in the HTML structure of the source website or inconsistencies in the data. This is especially important for books with a large number of verses, like Psalms 119, to ensure that all verses are correctly captured and accounted for. ====
             last_verse = get_last_plain_text_verse(entries)
-            match = re.match(r"^([A-Za-z]+)(\d+)$", last_verse)
-            if match:
-                prefix, number = match.groups()
-                last_verse_number = int(number)
+            print(f"last_verse = {last_verse}")
 
+            if last_verse is None:
+                print("Warning: no plain_text found, skipping verse check")
+                last_verse_number = 0
+            else:
+                match = re.match(r"^([A-Za-z]+)(\d+)$", last_verse)
+                if match:
+                    prefix, number = match.groups()
+                    last_verse_number = int(number)
+                else:
+                    last_verse_number = 0
             testament = "OT"
-            result = get_book_from_json(os.path.join(DATA_DIR, "old.json"), bookAbbreviation)
+            result = get_book_from_json("./old.json", bookAbbreviation)
             if result is None:
-                result = get_book_from_json(os.path.join(DATA_DIR, "new.json"), bookAbbreviation)
+                result = get_book_from_json("./new.json", bookAbbreviation)
                 testament = "NT"
 
             index, book_name, book_data = result
